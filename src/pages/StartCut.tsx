@@ -1,10 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startCut } from '../services/cutService'
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '../lib/date'
 
 export function StartCut() {
   const navigate = useNavigate()

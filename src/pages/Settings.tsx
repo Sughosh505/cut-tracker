@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getActiveCut, getCutDay } from '../services/cutService'
+import { formatLongDate } from '../lib/date'
 import type { Cut } from '../types/database'
 
 export function Settings() {
@@ -29,7 +30,7 @@ export function Settings() {
             </div>
             <div className="flex justify-between">
               <dt>Start date</dt>
-              <dd>{cut.start_date}</dd>
+              <dd>{formatLongDate(cut.start_date)}</dd>
             </div>
             {cut.starting_weight != null && (
               <div className="flex justify-between">
