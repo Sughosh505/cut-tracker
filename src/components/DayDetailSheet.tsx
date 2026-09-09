@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { formatDayTitle } from '../lib/date'
+import { unitToKg, weightToInput } from '../lib/weight'
+import { usePreferences } from '../contexts/PreferencesContext'
 import type { EntryValues } from '../services/cutService'
 import type { DailyEntry, DayStatus } from '../types/database'
 
@@ -29,8 +31,9 @@ export function DayDetailSheet({
   onSave: (values: EntryValues) => Promise<void>
   onClose: () => void
 }) {
+  const { weightUnit } = usePreferences()
   const [status, setStatus] = useState<DayStatus | null>(entry?.status ?? null)
-  const [weight, setWeight] = useState(asInput(entry?.weight))
+  const [weight, setWeight] = useState(weightToInput(entry?.weight ?? null, weightUnit))
   const [calories, setCalories] = useState(asInput(entry?.calories))
   const [protein, setProtein] = useState(asInput(entry?.protein))
   const [training, setTraining] = useState(entry?.training ?? false)
@@ -49,7 +52,7 @@ export function DayDetailSheet({
     try {
       await onSave({
         status,
-        weight: numberOrNull(weight),
+        weight: weight.trim() === '' ? null : unitToKg(Number(weight), weightUnit),
         calories: numberOrNull(calories),
         protein: numberOrNull(protein),
         training,
@@ -96,7 +99,7 @@ export function DayDetailSheet({
           </div>
 
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Weight (kg)
+            Weight ({weightUnit})
             <input
               type="number"
               step="0.1"

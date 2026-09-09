@@ -147,6 +147,82 @@ export async function saveEntry(
   return data
 }
 
+/** Weight-only edit from the home screen, so logging a weigh-in can't clobber
+ *  notes or macros already on the day. */
+export async function updateEntryWeight(
+  cutId: string,
+  date: string,
+  weight: number | null,
+): Promise<DailyEntry> {
+  const { data, error } = await supabase
+    .from('daily_entries')
+    .update({ weight })
+    .eq('cut_id', cutId)
+    .eq('date', date)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export interface WeightPoint {
+  date: string
+  weight: number
+  /** 7-point rolling mean, per spec section 6: this day plus the previous six
+   *  days that have weight data. Days without weight are skipped, never
+   *  interpolated, so a gap shifts the window rather than flattening it. */
+  movingAverage: number
+}
+
+export function buildWeightSeries(entries: DailyEntry[]): WeightPoint[] {
+  const weighed = entries
+    .filter((entry): entry is DailyEntry & { weight: number } => entry.weight != null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  return weighed.map((entry, i) => {
+    const window = weighed.slice(Math.max(0, i - 6), i + 1)
+    const sum = window.reduce((total, point) => total + point.weight, 0)
+    return {
+      date: entry.date,
+      weight: entry.weight,
+      movingAverage: sum / window.length,
+    }
+  })
+}
+
+export interface WeightStats {
+  /** kg throughout — callers convert for display. */
+  startingWeight: number | null
+  currentWeight: number | null
+  change: number | null
+  avgWeeklyChange: number | null
+  series: WeightPoint[]
+}
+
+export function computeWeightStats(cut: Cut, entries: DailyEntry[]): WeightStats {
+  const series = buildWeightSeries(entries)
+  const first = series[0] ?? null
+  const latest = series[series.length - 1] ?? null
+
+  // The cut's declared starting weight is the baseline when it exists; without
+  // one, the first logged weigh-in stands in.
+  const startingWeight = cut.starting_weight ?? first?.weight ?? null
+  const baselineDate = cut.starting_weight != null ? cut.start_date : first?.date
+
+  const currentWeight = latest?.weight ?? null
+  const change =
+    startingWeight != null && currentWeight != null ? currentWeight - startingWeight : null
+
+  let avgWeeklyChange: number | null = null
+  if (change != null && baselineDate && latest) {
+    const daysElapsed = daysBetween(baselineDate, latest.date)
+    if (daysElapsed > 0) avgWeeklyChange = (change / daysElapsed) * 7
+  }
+
+  return { startingWeight, currentWeight, change, avgWeeklyChange, series }
+}
+
 export interface CutStats {
   greenDays: number
   redDays: number

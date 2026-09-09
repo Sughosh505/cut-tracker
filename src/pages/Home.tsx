@@ -1,15 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   computeStats,
+  computeWeightStats,
   getActiveCut,
   getCutDay,
   getEntries,
   logDay,
+  updateEntryWeight,
   type CutStats,
 } from '../services/cutService'
+import { usePreferences } from '../contexts/PreferencesContext'
 import { formatLongDate, todayISO } from '../lib/date'
-import type { Cut, DailyEntry, DayStatus } from '../types/database'
+import { formatWeightDelta, unitToKg, weightToInput } from '../lib/weight'
+import type { Cut, DailyEntry, DayStatus, WeightUnit } from '../types/database'
 
 const STATUS_LABEL: Record<DayStatus, string> = { GREEN: 'GREEN', RED: 'RED' }
 const STATUS_SWATCH: Record<DayStatus, string> = { GREEN: 'bg-green-500', RED: 'bg-red-500' }
@@ -20,6 +24,7 @@ const STATUS_BUTTON: Record<DayStatus, string> = {
 }
 
 export function Home() {
+  const { weightUnit } = usePreferences()
   const [cut, setCut] = useState<Cut | null | undefined>(undefined)
   const [entries, setEntries] = useState<DailyEntry[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +100,13 @@ export function Home() {
 
   const todayEntry = entries.find((entry) => entry.date === today) ?? null
   const stats = computeStats(cut, entries, today)
+  const weight = computeWeightStats(cut, entries)
+
+  async function handleWeight(weightKg: number | null) {
+    if (!cut) return
+    const saved = await updateEntryWeight(cut.id, today, weightKg)
+    setEntries((current) => [...current.filter((e) => e.date !== today), saved])
+  }
 
   return (
     <div className="flex flex-col gap-8 px-6 py-10">
@@ -174,6 +186,15 @@ export function Home() {
 
       {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
+      {todayEntry && (
+        <WeightPrompt
+          key={todayEntry.id}
+          entry={todayEntry}
+          unit={weightUnit}
+          onSave={handleWeight}
+        />
+      )}
+
       {stats.unloggedDays > 0 && (
         <Link
           to="/calendar"
@@ -186,12 +207,88 @@ export function Home() {
         </Link>
       )}
 
-      <StatsBlock stats={stats} />
+      <StatsBlock stats={stats} weightChange={weight.change} unit={weightUnit} />
     </div>
   )
 }
 
-function StatsBlock({ stats }: { stats: CutStats }) {
+function WeightPrompt({
+  entry,
+  unit,
+  onSave,
+}: {
+  entry: DailyEntry
+  unit: WeightUnit
+  onSave: (weightKg: number | null) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(entry.weight == null)
+  const [value, setValue] = useState(weightToInput(entry.weight, unit))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(value.trim() === '' ? null : unitToKg(Number(value), unit))
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save weight')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
+        <span className="text-gray-600">
+          Weight {weightToInput(entry.weight, unit)} {unit}
+        </span>
+        <button onClick={() => setEditing(true)} className="font-medium text-gray-900">
+          Edit
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2">
+      <div className="flex items-end gap-2">
+        <label className="flex flex-1 flex-col gap-1 text-sm font-medium text-gray-700">
+          Today's weight ({unit}) — optional
+          <input
+            type="number"
+            step="0.1"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="min-h-11 rounded-lg border border-gray-300 px-3"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={saving}
+          className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 disabled:opacity-50"
+        >
+          {saving ? '...' : 'Save'}
+        </button>
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+    </form>
+  )
+}
+
+function StatsBlock({
+  stats,
+  weightChange,
+  unit,
+}: {
+  stats: CutStats
+  weightChange: number | null
+  unit: WeightUnit
+}) {
   return (
     <dl className="flex flex-col gap-4 border-t border-gray-200 pt-6">
       <Stat
@@ -202,6 +299,9 @@ function StatsBlock({ stats }: { stats: CutStats }) {
         label="Adherence"
         value={stats.adherence === null ? '—' : `${stats.adherence.toFixed(1)}%`}
       />
+      {weightChange !== null && (
+        <Stat label="Weight" value={formatWeightDelta(weightChange, unit)} />
+      )}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between text-sm text-gray-600">
           <dt>Green</dt>

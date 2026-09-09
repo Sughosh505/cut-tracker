@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { PreferencesProvider } from './contexts/PreferencesContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { BottomNav } from './components/BottomNav'
 import { SignIn } from './pages/SignIn'
@@ -24,20 +25,22 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/sign-in" element={<SignIn />} />
+        <PreferencesProvider>
+          <Routes>
+            <Route path="/sign-in" element={<SignIn />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/start-cut" element={<StartCut />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/start-cut" element={<StartCut />} />
 
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/stats" element={<Stats />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>
   )

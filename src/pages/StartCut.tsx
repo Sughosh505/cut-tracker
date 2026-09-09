@@ -2,9 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startCut } from '../services/cutService'
 import { todayISO } from '../lib/date'
+import { unitToKg } from '../lib/weight'
+import { usePreferences } from '../contexts/PreferencesContext'
 
 export function StartCut() {
   const navigate = useNavigate()
+  const { weightUnit } = usePreferences()
   const [startDate, setStartDate] = useState(todayISO())
   const [startingWeight, setStartingWeight] = useState('')
   const [targetWeight, setTargetWeight] = useState('')
@@ -22,8 +25,8 @@ export function StartCut() {
     try {
       await startCut({
         startDate,
-        startingWeight: startingWeight ? Number(startingWeight) : undefined,
-        targetWeight: targetWeight ? Number(targetWeight) : undefined,
+        startingWeight: startingWeight ? unitToKg(Number(startingWeight), weightUnit) : undefined,
+        targetWeight: targetWeight ? unitToKg(Number(targetWeight), weightUnit) : undefined,
         calorieTarget: calorieTarget ? Number(calorieTarget) : undefined,
         proteinTarget: proteinTarget ? Number(proteinTarget) : undefined,
         rules: rules || undefined,
@@ -55,7 +58,7 @@ export function StartCut() {
         </label>
 
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Starting weight (kg)
+          Starting weight ({weightUnit})
           <input
             type="number"
             step="0.1"
@@ -67,7 +70,7 @@ export function StartCut() {
         </label>
 
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Target weight (kg)
+          Target weight ({weightUnit})
           <input
             type="number"
             step="0.1"
