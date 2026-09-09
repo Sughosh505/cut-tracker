@@ -32,6 +32,12 @@ React + Vite + TypeScript + Tailwind CSS, Supabase (Auth/Postgres/RLS), Recharts
    npm run dev
    ```
 
+## Environment variables
+
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required. `npm run build`
+fails immediately if either is missing, including on Vercel — set them in the
+project's environment settings before deploying.
+
 ## Scripts
 
 - `npm run dev` — start the dev server

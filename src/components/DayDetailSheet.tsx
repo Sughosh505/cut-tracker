@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { formatDayTitle } from '../lib/date'
 import { unitToKg, weightToInput } from '../lib/weight'
+import { errorMessage } from '../lib/errors'
 import { usePreferences } from '../contexts/PreferencesContext'
 import type { EntryValues } from '../services/cutService'
 import type { DailyEntry, DayStatus } from '../types/database'
@@ -59,7 +60,7 @@ export function DayDetailSheet({
         notes: notes.trim() === '' ? null : notes.trim(),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(errorMessage(err, 'Failed to save'))
       setSaving(false)
     }
   }

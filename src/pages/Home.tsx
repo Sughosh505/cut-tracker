@@ -1,19 +1,22 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   computeStats,
   computeWeightStats,
-  getActiveCut,
   getCutDay,
-  getEntries,
   logDay,
   updateEntryWeight,
   type CutStats,
 } from '../services/cutService'
+import { NoActiveCut } from '../components/NoActiveCut'
+import { ScreenSkeleton } from '../components/Skeleton'
+import { useCutData } from '../hooks/useCutData'
+import { useToast } from '../contexts/ToastContext'
+import { errorMessage } from '../lib/errors'
 import { usePreferences } from '../contexts/PreferencesContext'
 import { formatLongDate, todayISO } from '../lib/date'
 import { formatWeightDelta, unitToKg, weightToInput } from '../lib/weight'
-import type { Cut, DailyEntry, DayStatus, WeightUnit } from '../types/database'
+import type { DailyEntry, DayStatus, WeightUnit } from '../types/database'
 
 const STATUS_LABEL: Record<DayStatus, string> = { GREEN: 'GREEN', RED: 'RED' }
 const STATUS_SWATCH: Record<DayStatus, string> = { GREEN: 'bg-green-500', RED: 'bg-red-500' }
@@ -25,78 +28,31 @@ const STATUS_BUTTON: Record<DayStatus, string> = {
 
 export function Home() {
   const { weightUnit } = usePreferences()
-  const [cut, setCut] = useState<Cut | null | undefined>(undefined)
-  const [entries, setEntries] = useState<DailyEntry[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const { cut, entries, setEntries, loading, error } = useCutData()
+  const { showToast, report } = useToast()
   const [pending, setPending] = useState<DayStatus | null>(null)
   const [changing, setChanging] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const today = todayISO()
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadCut() {
-      const activeCut = await getActiveCut()
-      const cutEntries = activeCut ? await getEntries(activeCut.id) : []
-      return { activeCut, cutEntries }
-    }
-
-    loadCut().then(
-      ({ activeCut, cutEntries }) => {
-        if (cancelled) return
-        setCut(activeCut)
-        setEntries(cutEntries)
-      },
-      (err: unknown) => {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Failed to load cut')
-      },
-    )
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   async function handleLog(status: DayStatus) {
     if (!cut) return
     setSaving(true)
-    setError(null)
-    try {
+    const ok = await report(async () => {
       const entry = await logDay(cut.id, today, status)
       setEntries((current) => [...current.filter((e) => e.date !== today), entry])
+    }, 'Failed to save')
+    setSaving(false)
+    if (ok) {
       setPending(null)
       setChanging(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setSaving(false)
     }
   }
 
-  if (error && cut === undefined) {
-    return <div className="p-6 text-sm text-red-500">{error}</div>
-  }
-
-  if (cut === undefined) {
-    return <div className="flex h-full items-center justify-center text-gray-400">Loading...</div>
-  }
-
-  if (cut === null) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-gray-500">You don't have an active cut yet.</p>
-        <Link
-          to="/start-cut"
-          className="min-h-11 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white"
-        >
-          Start a Cut
-        </Link>
-      </div>
-    )
-  }
+  if (loading) return <ScreenSkeleton />
+  if (error) return <NoActiveCut message={error} />
+  if (!cut) return <NoActiveCut message="You don't have an active cut yet." />
 
   const todayEntry = entries.find((entry) => entry.date === today) ?? null
   const stats = computeStats(cut, entries, today)
@@ -106,6 +62,7 @@ export function Home() {
     if (!cut) return
     const saved = await updateEntryWeight(cut.id, today, weightKg)
     setEntries((current) => [...current.filter((e) => e.date !== today), saved])
+    showToast('Weight saved.', 'success')
   }
 
   return (
@@ -184,8 +141,6 @@ export function Home() {
         </div>
       )}
 
-      {error && <p className="text-center text-sm text-red-500">{error}</p>}
-
       {todayEntry && (
         <WeightPrompt
           key={todayEntry.id}
@@ -234,7 +189,7 @@ function WeightPrompt({
       await onSave(value.trim() === '' ? null : unitToKg(Number(value), unit))
       setEditing(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save weight')
+      setError(errorMessage(err, 'Failed to save weight'))
     } finally {
       setSaving(false)
     }

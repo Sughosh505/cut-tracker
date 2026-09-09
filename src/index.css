@@ -10,3 +10,9 @@ body {
   margin: 0;
   background-color: #f9fafb;
 }
+
+/* Keep content clear of the notch when installed to the home screen. The
+   bottom inset is handled by the fixed nav itself. */
+#root {
+  padding-top: env(safe-area-inset-top);
+}

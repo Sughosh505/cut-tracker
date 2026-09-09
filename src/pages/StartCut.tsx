@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { startCut } from '../services/cutService'
 import { todayISO } from '../lib/date'
 import { unitToKg } from '../lib/weight'
+import { errorMessage } from '../lib/errors'
 import { usePreferences } from '../contexts/PreferencesContext'
 
 export function StartCut() {
@@ -34,7 +35,7 @@ export function StartCut() {
       })
       navigate('/')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start cut')
+      setError(errorMessage(err, 'Failed to start cut'))
     } finally {
       setSubmitting(false)
     }

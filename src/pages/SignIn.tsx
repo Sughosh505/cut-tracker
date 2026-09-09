@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { errorMessage } from '../lib/errors'
 
 export function SignIn() {
   const { signInWithGoogle } = useAuth()
@@ -9,8 +10,15 @@ export function SignIn() {
     setError(null)
     try {
       await signInWithGoogle()
-    } catch {
-      setError('Sign-in is not available yet. Google OAuth has not been configured for this project.')
+    } catch (err) {
+      // Report what actually failed; an unconfigured provider is only the most
+      // likely cause, not the only one.
+      setError(
+        errorMessage(
+          err,
+          'Sign-in is not available yet. Google OAuth has not been configured for this project.',
+        ),
+      )
     }
   }
 

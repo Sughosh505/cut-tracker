@@ -57,6 +57,35 @@ export function getCutDay(cut: Cut, today: string = todayISO()): number {
   return daysBetween(cut.start_date, today) + 1
 }
 
+export async function getCuts(): Promise<Cut[]> {
+  const { data, error } = await supabase
+    .from('cuts')
+    .select()
+    .order('start_date', { ascending: false })
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getCut(cutId: string): Promise<Cut | null> {
+  const { data, error } = await supabase.from('cuts').select().eq('id', cutId).maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function endCut(cutId: string, endDate: string = todayISO()): Promise<Cut> {
+  const { data, error } = await supabase
+    .from('cuts')
+    .update({ status: 'COMPLETED', end_date: endDate })
+    .eq('id', cutId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function getEntries(cutId: string): Promise<DailyEntry[]> {
   const { data, error } = await supabase
     .from('daily_entries')
