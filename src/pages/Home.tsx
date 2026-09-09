@@ -174,6 +174,18 @@ export function Home() {
 
       {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
+      {stats.unloggedDays > 0 && (
+        <Link
+          to="/calendar"
+          className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600"
+        >
+          <span>
+            You have {stats.unloggedDays} unlogged {stats.unloggedDays === 1 ? 'day' : 'days'}.
+          </span>
+          <span className="font-medium text-gray-900">View</span>
+        </Link>
+      )}
+
       <StatsBlock stats={stats} />
     </div>
   )

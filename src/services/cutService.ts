@@ -106,6 +106,47 @@ export async function logDay(
   return data
 }
 
+export interface EntryValues {
+  status: DayStatus
+  weight?: number | null
+  calories?: number | null
+  protein?: number | null
+  training?: boolean | null
+  notes?: string | null
+}
+
+/** Full save from the day detail sheet — creates the entry for a previously
+ *  unlogged day, or overwrites every field of an existing one. */
+export async function saveEntry(
+  cutId: string,
+  date: string,
+  values: EntryValues,
+): Promise<DailyEntry> {
+  const userId = await requireUserId()
+
+  const { data, error } = await supabase
+    .from('daily_entries')
+    .upsert(
+      {
+        user_id: userId,
+        cut_id: cutId,
+        date,
+        status: values.status,
+        weight: values.weight ?? null,
+        calories: values.calories ?? null,
+        protein: values.protein ?? null,
+        training: values.training ?? null,
+        notes: values.notes ?? null,
+      },
+      { onConflict: 'user_id,cut_id,date' },
+    )
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export interface CutStats {
   greenDays: number
   redDays: number

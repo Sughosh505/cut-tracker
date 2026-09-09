@@ -35,3 +35,31 @@ export function formatLongDate(iso: string): string {
     year: 'numeric',
   })
 }
+
+/** Weeks run Monday–Sunday, per the calendar grid in spec section 4.2. */
+export function mondayIndex(iso: string): number {
+  return (parseISODate(iso).getDay() + 6) % 7
+}
+
+export function monthStart(iso: string): string {
+  return iso.slice(0, 7) + '-01'
+}
+
+export function addMonths(iso: string, months: number): string {
+  const date = parseISODate(monthStart(iso))
+  date.setMonth(date.getMonth() + months)
+  return toISODate(date)
+}
+
+export function daysInMonth(iso: string): number {
+  const date = parseISODate(iso)
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+}
+
+export function formatMonthTitle(iso: string): string {
+  return parseISODate(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+}
+
+export function formatDayTitle(iso: string): string {
+  return parseISODate(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+}
