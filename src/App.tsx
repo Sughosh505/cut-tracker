@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { BottomNav } from './components/BottomNav'
+import { DevModeBanner } from './components/DevModeBanner'
 import { SignIn } from './pages/SignIn'
 import { StartCut } from './pages/StartCut'
 import { Home } from './pages/Home'
@@ -24,6 +25,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <DevModeBanner />
         <Routes>
           <Route path="/sign-in" element={<SignIn />} />
 

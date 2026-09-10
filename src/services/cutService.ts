@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { isDevMode } from '../lib/devMode'
 import { toLocalDateISO } from '../lib/date'
 import type { Cut } from '../types/database'
 
@@ -12,7 +13,39 @@ export interface StartCutParams {
   plannedEndDate?: string
 }
 
+// TEMPORARY: fake persistence for dev-mode testing without a Supabase project.
+// Remove alongside devMode.ts.
+const DEV_STORAGE_KEY = 'cut-tracker-dev-active-cut'
+
+function devGetActiveCut(): Cut | null {
+  const raw = localStorage.getItem(DEV_STORAGE_KEY)
+  return raw ? (JSON.parse(raw) as Cut) : null
+}
+
+function devStartCut(params: StartCutParams): Cut {
+  const now = new Date().toISOString()
+  const cut: Cut = {
+    id: 'dev-cut',
+    user_id: 'dev-user',
+    start_date: params.startDate,
+    end_date: null,
+    starting_weight: params.startingWeight ?? null,
+    target_weight: params.targetWeight ?? null,
+    calorie_target: params.calorieTarget ?? null,
+    protein_target: params.proteinTarget ?? null,
+    rules: params.rules ?? null,
+    planned_end_date: params.plannedEndDate ?? null,
+    status: 'ACTIVE',
+    created_at: now,
+    updated_at: now,
+  }
+  localStorage.setItem(DEV_STORAGE_KEY, JSON.stringify(cut))
+  return cut
+}
+
 export async function startCut(params: StartCutParams): Promise<Cut> {
+  if (isDevMode) return devStartCut(params)
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -38,6 +71,8 @@ export async function startCut(params: StartCutParams): Promise<Cut> {
 }
 
 export async function getActiveCut(): Promise<Cut | null> {
+  if (isDevMode) return devGetActiveCut()
+
   const { data, error } = await supabase
     .from('cuts')
     .select()

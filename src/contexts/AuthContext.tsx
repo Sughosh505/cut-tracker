@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { isDevMode } from '../lib/devMode'
 
 interface AuthContextValue {
   session: Session | null
@@ -12,11 +13,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+// TEMPORARY: fake signed-in session used only when VITE_DEV_MODE=true and no
+// Supabase project is configured yet. Remove alongside devMode.ts.
+const DEV_USER = { id: 'dev-user', email: 'dev@localhost' } as User
+const DEV_SESSION = { user: DEV_USER } as Session
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<Session | null>(isDevMode ? DEV_SESSION : null)
+  const [loading, setLoading] = useState(!isDevMode)
 
   useEffect(() => {
+    if (isDevMode) return
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
@@ -30,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signInWithGoogle() {
+    if (isDevMode) return
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
@@ -38,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    if (isDevMode) {
+      localStorage.removeItem('cut-tracker-dev-active-cut')
+      window.location.reload()
+      return
+    }
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
