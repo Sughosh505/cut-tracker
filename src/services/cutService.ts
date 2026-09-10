@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { toLocalDateISO } from '../lib/date'
 import type { Cut } from '../types/database'
 
 export interface StartCutParams {
@@ -49,7 +50,7 @@ export async function getActiveCut(): Promise<Cut | null> {
 
 export function getCutDay(cut: Cut, today: Date = new Date()): number {
   const start = new Date(cut.start_date + 'T00:00:00')
-  const current = new Date(today.toISOString().slice(0, 10) + 'T00:00:00')
+  const current = new Date(toLocalDateISO(today) + 'T00:00:00')
   const diffMs = current.getTime() - start.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   return diffDays + 1

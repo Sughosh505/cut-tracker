@@ -1,14 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startCut } from '../services/cutService'
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { toLocalDateISO } from '../lib/date'
 
 export function StartCut() {
   const navigate = useNavigate()
-  const [startDate, setStartDate] = useState(todayISO())
+  const [startDate, setStartDate] = useState(toLocalDateISO())
   const [startingWeight, setStartingWeight] = useState('')
   const [targetWeight, setTargetWeight] = useState('')
   const [calorieTarget, setCalorieTarget] = useState('')
